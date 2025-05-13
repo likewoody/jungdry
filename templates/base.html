@@ -9,6 +9,44 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PWA 관련 스크립트 -->
     <script>
+        function handleDomainSelect(select) {
+        const domainInput = document.getElementById('domainInput');
+        if (select.value === 'custom') {
+            domainInput.readOnly = false;
+            domainInput.value = '';
+            domainInput.focus();
+        } else {
+            domainInput.readOnly = true;
+            domainInput.value = select.value;
+        }
+        }
+
+        function validateForm() {
+        const username = document.querySelector('input[name="username"]');
+        const password = document.querySelector('input[name="password"]');
+
+        let valid = true;
+
+        if (!username.value.trim()) {
+            username.setCustomValidity('이메일 아이디를 입력해주세요.');
+            username.reportValidity();
+            valid = false;
+        } else {
+            username.setCustomValidity('');
+        }
+
+        if (!password.value.trim()) {
+            password.setCustomValidity('비밀번호를 입력해주세요.');
+            password.reportValidity();
+            valid = false;
+        } else {
+            password.setCustomValidity('');
+        }
+
+        return valid;
+        }
+    </script>
+    <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/service-worker.js')
@@ -23,7 +61,66 @@
     </script>
     {% block head %}{% endblock %}
 </head>
-<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+<body class="bg-blue-100 flex items-center justify-center h-screen font-sans">
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-4 border-blue-300">
+        <h2 class="text-3xl font-bold text-center text-blue-600 mb-6">로그인</h2>
+
+    {% if session.get('message') %}
+    <div class="mb-4 text-{{ 'red' if session.get('message_type') == 'error' else 'green' }}-500 text-sm">
+        {{ session.get('message') }}
+    </div>
+    {% set _ = session.pop('message', None) %}
+    {% set _ = session.pop('message_type', None) %}
+    {% endif %}
+
+        <form method="POST" action="/api/login" class="space-y-4" onsubmit="return validateForm()">
+        <!-- 이메일 -->
+        <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">이메일</label>
+            <div class="flex gap-2">
+            <input type="text" name="username" placeholder="아이디"
+                class="flex-grow p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400"
+                required>
+
+            <span class="flex items-center">@</span>
+
+            <input type="text" name="userdomain" id="domainInput" value="naver.com" readonly
+                class="w-[40%] p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400"
+                required>
+            </div>
+
+            <select onchange="handleDomainSelect(this)"
+            class="mt-2 w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400" required>
+            <option value="naver.com">naver.com</option>
+            <option value="gmail.com">gmail.com</option>
+            <option value="daum.net">daum.net</option>
+            <option value="custom">직접 입력</option>
+            </select>
+        </div>
+
+        <!-- 비밀번호 -->
+        <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">비밀번호</label>
+            <input type="password" name="password" placeholder="비밀번호"
+            class="w-full p-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400"
+            required>
+        </div>
+
+        <!-- 로그인 버튼 -->
+        <button type="submit"
+            class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-lg transition">
+            로그인
+        </button>
+        </form>
+
+        <!-- 회원가입 안내 -->
+        <p class="mt-4 text-center text-sm">
+        아직 회원이 아니신가요?
+        <a href="/register" class="text-blue-600 hover:underline">회원가입</a>
+        </p>
+    </div>
+</body>
+<!-- <body class="bg-gray-100 font-sans leading-normal tracking-normal">
     <nav class="bg-blue-600 text-white p-4">
         <div class="container mx-auto flex justify-between items-center">
             <a href="{{ url_for('index') }}" class="text-xl font-bold">기숙사 세탁기 예약</a>
@@ -45,5 +142,5 @@
     <footer class="bg-gray-200 text-center p-4 mt-8">
         <p>© 2025 기숙사 세탁기 예약 시스템</p>
     </footer>
-</body>
+</body> -->
 </html>
