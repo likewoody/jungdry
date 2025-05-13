@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .time-slot {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .time-slot:hover {
+        background-color: #bee3f8;
+    }
+    .time-slot.selected {
+        background-color: #3182ce;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">세탁기 {{ laundry._id }} 예약</h1>
+
+{% if error %}
+<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+    {{ error }}
+</div>
+{% endif %}
+
+<div class="bg-white p-6 rounded-lg shadow-md">
+    <form action="{{ url_for('reserve', laundry_id=laundry._id) }}" method="POST">
+        <div class="mb-6">
+            <h2 class="text-xl font-bold mb-4">날짜 선택</h2>
+            <div class="grid grid-cols-7 gap-2">
+                {% for date_str in available_times.keys() %}
+                <div class="date-option">
+                    <button type="button"
+                            class="date-btn w-full py-2 px-4 rounded bg-gray-200 hover:bg-gray-300"
+                            data-date="{{ date_str }}">
+                        {{ date_str }}
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <h2 class="text-xl font-bold mb-4">시간 선택</h2>
+            <div class="time-slots grid grid-cols-4 gap-2">
+                <!-- 여기에 JavaScript로 시간 슬롯이 채워집니다 -->
+                <div class="col-span-4 text-center text-gray-500">날짜를 먼저 선택해주세요.</div>
+            </div>
+        </div>
+
+        <input type="hidden" name="reserve_date" id="reserve_date">
+        <input type="hidden" name="reserve_time" id="reserve_time">
+
+        <div class="text-center">
+            <button type="submit"
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+                    id="reserve-btn" disabled>
+                예약하기
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // 날짜와 시간 데이터
+    const availableTimes = {{ available_times|tojson }};
+    let selectedDate = null;
+    let selectedTime = null;
+
+    // 날짜 버튼 이벤트
+    document.querySelectorAll('.date-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // 이전 선택 초기화
+            document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('bg-blue-500', 'text-white'));
+
+            // 현재 선택
+            this.classList.add('bg-blue-500', 'text-white');
+
+            // 선택된 날짜 저장
+            selectedDate = this.dataset.date;
+            document.getElementById('reserve_date').value = selectedDate;
+
+            // 시간 슬롯 업데이트
+            updateTimeSlots(selectedDate);
+
+            // 시간 선택 초기화
+            selectedTime = null;
+            document.getElementById('reserve_time').value = '';
+            updateReserveButton();
+        });
+    });
+
+    // 시간 슬롯 업데이트 함수
+    function updateTimeSlots(date) {
+        const timeSlotsContainer = document.querySelector('.time-slots');
+        timeSlotsContainer.innerHTML = '';
+
+        const times = availableTimes[date];
+        if (times && times.length > 0) {
+            times.forEach(time => {
+                const timeSlot = document.createElement('div');
+                timeSlot.className = 'time-slot py-2 px-4 rounded bg-gray-200 text-center';
+                timeSlot.textContent = time;
+                timeSlot.dataset.time = time;
+
+                timeSlot.addEventListener('click', function() {
+                    // 이전 선택 초기화
+                    document.querySelectorAll('.time-slot').forEach(slot => slot.classList.remove('selected'));
+
+                    // 현재 선택
+                    this.classList.add('selected');
+
+                    // 선택된 시간 저장
+                    selectedTime = this.dataset.time;
+                    document.getElementById('reserve_time').value = selectedTime;
+
+                    updateReserveButton();
+                });
+
+                timeSlotsContainer.appendChild(timeSlot);
+            });
+        } else {
+            timeSlotsContainer.innerHTML = '<div class="col-span-4 text-center text-gray-500">이 날짜에 예약 가능한 시간이 없습니다.</div>';
+        }
+    }
+
+    // 예약 버튼 상태 업데이트
+    function updateReserveButton() {
+        const reserveBtn = document.getElementById('reserve-btn');
+        reserveBtn.disabled = !(selectedDate && selectedTime);
+    }
+</script>
+{% endblock %}
