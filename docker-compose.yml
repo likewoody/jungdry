@@ -15,7 +15,7 @@ services:
       - ./:/app
     # 시작 스크립트 변경
     command: >
-      sh -c "
+      sh -c " 
         python -c 'import time; time.sleep(5)'  &&  # MongoDB가 완전히 시작되도록 대기
         python init_db.py &&                       # 데이터베이스 초기화
         python app.py                              # 앱 실행

@@ -16,8 +16,8 @@ app.secret_key = os.getenv("SECRET_KEY", "default_secret_key")
 
 # MongoDB 연결 - 도커 컴포즈 환경에 맞게 수정
 # docker-compose.yml에서 설정한 MONGO_URI 환경 변수 사용
-mongo_uri = os.getenv("MONGO_URI", "mongodb://mongo:27017/")
-client = MongoClient(mongo_uri)
+mongo_uri = os.getenv("MONGO_URI", "localhost://mongo:27017/")
+client = MongoClient('localhost', 27017)
 db = client["jungdry"]
 
 # JWT 설정
