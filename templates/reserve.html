@@ -146,156 +146,163 @@
 </div>
 
 <script>
-    // 날짜와 시간 데이터
-    const availableTimes = {{ available_times|tojson }};
-    let selectedDate = null;
-    let selectedTime = null;
+// 날짜와 시간 데이터
+const availableTimes = {{ available_times|tojson }};
+let selectedDate = null;
+let selectedTime = null;
 
-    // 달력 생성 함수
-    function generateCalendar() {
-        const calendarContainer = document.getElementById('calendar-days');
-        calendarContainer.innerHTML = '';
+// 달력 생성 함수
+function generateCalendar() {
+    const calendarContainer = document.getElementById('calendar-days');
+    calendarContainer.innerHTML = '';
 
-        const today = new Date();
-        const currentMonth = today.getMonth();
-        const currentYear = today.getFullYear();
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
 
-        // 이번 달의 첫 날과 마지막 날
-        const firstDay = new Date(currentYear, currentMonth, 1);
-        const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    // 이번 달의 첫 날과 마지막 날
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
 
-        // 이번 달 첫 날의 요일 (0: 일요일, 6: 토요일)
-        const firstDayOfWeek = firstDay.getDay();
+    // 이번 달 첫 날의 요일 (0: 일요일, 6: 토요일)
+    const firstDayOfWeek = firstDay.getDay();
 
-        // 이전 달의 날짜들 (비활성화)
-        for (let i = 0; i < firstDayOfWeek; i++) {
-            const dayElement = document.createElement('div');
-            dayElement.className = 'text-center p-1 text-gray-300';
-            calendarContainer.appendChild(dayElement);
-        }
-
-        // 이번 달의 날짜들
-        for (let i = 1; i <= lastDay.getDate(); i++) {
-            const dateObj = new Date(currentYear, currentMonth, i);
-            const dateStr = dateObj.toISOString().split('T')[0];
-
-            const dayElement = document.createElement('button');
-            dayElement.type = 'button';
-            dayElement.className = 'text-center p-2 rounded';
-
-            // 오늘 날짜 강조
-            if (dateObj.toDateString() === today.toDateString()) {
-                dayElement.classList.add('bg-blue-100');
-            }
-
-            // 예약 가능한 날짜인지 확인
-            const isAvailable = availableTimes.hasOwnProperty(dateStr) && availableTimes[dateStr].length > 0;
-
-            if (isAvailable) {
-                dayElement.classList.add('hover:bg-blue-200', 'cursor-pointer', 'text-gray-900');
-                dayElement.dataset.date = dateStr;
-
-                dayElement.addEventListener('click', function() {
-                    // 이전 선택 초기화
-                    document.querySelectorAll('#calendar-days button.bg-blue-500').forEach(el => {
-                        el.classList.remove('bg-blue-500', 'text-white');
-                        if (el.toDateString === today.toDateString()) {
-                            el.classList.add('bg-blue-100');
-                        }
-                    });
-
-                    // 현재 선택
-                    this.classList.add('bg-blue-500', 'text-white');
-                    this.classList.remove('bg-blue-100');
-
-                    // 선택된 날짜 저장
-                    selectedDate = this.dataset.date;
-                    document.getElementById('reserve_date').value = selectedDate;
-
-                    // 선택된 날짜 표시
-                    const dateObj = new Date(selectedDate);
-                    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-                    document.getElementById('selected-date-display').textContent = dateObj.toLocaleDateString('ko-KR', options);
-
-                    // 시간 슬롯 업데이트
-                    updateTimeSlots(selectedDate);
-
-                    // 시간 선택 초기화
-                    selectedTime = null;
-                    document.getElementById('reserve_time').value = '';
-                    updateReserveButton();
-                });
-            } else {
-                dayElement.classList.add('text-gray-400');
-            }
-
-            dayElement.textContent = i;
-            calendarContainer.appendChild(dayElement);
-        }
+    // 이전 달의 날짜들 (비활성화)
+    for (let i = 0; i < firstDayOfWeek; i++) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'text-center p-1 text-gray-300';
+        calendarContainer.appendChild(dayElement);
     }
 
-    // 시간 슬롯 업데이트 함수
-    function updateTimeSlots(date) {
-        const timeSlotsContainer = document.getElementById('time-slots');
-        timeSlotsContainer.innerHTML = '';
+    // 이번 달의 날짜들
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+        const dateObj = new Date(currentYear, currentMonth, i);
 
-        const times = availableTimes[date];
-        if (times && times.length > 0) {
-            // 06:00부터 23:00까지만 표시 (00:00~05:59 제외)
-            const filteredTimes = times.filter(time => {
-                const hour = parseInt(time.split(':')[0]);
-                return hour >= 6;
-            });
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
 
-            if (filteredTimes.length > 0) {
-                filteredTimes.sort().forEach(time => {
-                    const timeSlot = document.createElement('li');
+        const dayElement = document.createElement('button');
+        dayElement.type = 'button';
+        dayElement.className = 'text-center p-2 rounded';
 
-                    const timeInput = document.createElement('input');
-                    timeInput.type = 'radio';
-                    timeInput.id = `time-${time}`;
-                    timeInput.value = time;
-                    timeInput.name = 'timetable';
-                    timeInput.classList.add('hidden', 'peer');
+        // 오늘 날짜 강조
+        if (dateObj.toDateString() === today.toDateString()) {
+            dayElement.classList.add('bg-blue-100');
+        }
 
-                    const timeLabel = document.createElement('label');
-                    timeLabel.htmlFor = `time-${time}`;
-                    timeLabel.className = 'inline-flex items-center justify-center w-full p-2 text-sm font-medium text-center bg-white border rounded-lg cursor-pointer text-blue-600 border-blue-600 dark:hover:text-white dark:border-blue-500 dark:peer-checked:border-blue-500 peer-checked:border-blue-600 peer-checked:bg-blue-600 hover:text-white peer-checked:text-white dark:peer-checked:text-white hover:bg-blue-500 dark:text-blue-500 dark:bg-gray-900 dark:hover:bg-blue-600 dark:hover:border-blue-600 dark:peer-checked:bg-blue-500';
+        // 예약 가능한 날짜인지 확인
+        const isAvailable = availableTimes.hasOwnProperty(dateStr) && availableTimes[dateStr].length > 0;
 
-                    // 시간을 12시간제로 표시 (예: 14:00 -> 02:00 PM)
-                    const hour = parseInt(time.split(':')[0]);
-                    const minute = time.split(':')[1];
-                    const period = hour >= 12 ? 'PM' : 'AM';
-                    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-                    timeLabel.textContent = `${displayHour.toString().padStart(2, '0')}:${minute} ${period}`;
+        // 중요 변경: 오늘 날짜는 항상 클릭 가능하게 설정
+        const isToday = dateObj.toDateString() === today.toDateString();
 
-                    timeInput.addEventListener('change', function() {
-                        selectedTime = time;
-                        document.getElementById('reserve_time').value = selectedTime;
-                        updateReserveButton();
-                    });
+        if (isAvailable || isToday) {  // 예약 가능하거나 오늘 날짜면 클릭 가능
+            dayElement.classList.add('hover:bg-blue-200', 'cursor-pointer', 'text-gray-900');
+            dayElement.dataset.date = dateStr;
 
-                    timeSlot.appendChild(timeInput);
-                    timeSlot.appendChild(timeLabel);
-                    timeSlotsContainer.appendChild(timeSlot);
+            dayElement.addEventListener('click', function() {
+                // 이전 선택 초기화
+                document.querySelectorAll('#calendar-days button.bg-blue-500').forEach(el => {
+                    el.classList.remove('bg-blue-500', 'text-white');
+                    if (el.toDateString === today.toDateString()) {
+                        el.classList.add('bg-blue-100');
+                    }
                 });
-            } else {
-                timeSlotsContainer.innerHTML = '<div class="col-span-2 text-center text-gray-500">이 날짜에 예약 가능한 시간이 없습니다.</div>';
-            }
+
+                // 현재 선택
+                this.classList.add('bg-blue-500', 'text-white');
+                this.classList.remove('bg-blue-100');
+
+                // 선택된 날짜 저장
+                selectedDate = this.dataset.date;
+                document.getElementById('reserve_date').value = selectedDate;
+
+                // 선택된 날짜 표시
+                const dateObj = new Date(selectedDate);
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                document.getElementById('selected-date-display').textContent = dateObj.toLocaleDateString('ko-KR', options);
+
+                // 시간 슬롯 업데이트
+                updateTimeSlots(selectedDate);
+
+                // 시간 선택 초기화
+                selectedTime = null;
+                document.getElementById('reserve_time').value = '';
+                updateReserveButton();
+            });
+        } else {
+            dayElement.classList.add('text-gray-400');
+        }
+
+        dayElement.textContent = i;
+        calendarContainer.appendChild(dayElement);
+    }
+}
+
+// 시간 슬롯 업데이트 함수
+function updateTimeSlots(date) {
+    const timeSlotsContainer = document.getElementById('time-slots');
+    timeSlotsContainer.innerHTML = '';
+
+    const times = availableTimes[date];
+    if (times && times.length > 0) {
+        // 06:00부터 23:00까지만 표시 (00:00~05:59 제외)
+        const filteredTimes = times.filter(time => {
+            const hour = parseInt(time.split(':')[0]);
+            return hour >= 6;
+        });
+
+        if (filteredTimes.length > 0) {
+            filteredTimes.sort().forEach(time => {
+                const timeSlot = document.createElement('li');
+
+                const timeInput = document.createElement('input');
+                timeInput.type = 'radio';
+                timeInput.id = `time-${time}`;
+                timeInput.value = time;
+                timeInput.name = 'timetable';
+                timeInput.classList.add('hidden', 'peer');
+
+                const timeLabel = document.createElement('label');
+                timeLabel.htmlFor = `time-${time}`;
+                timeLabel.className = 'inline-flex items-center justify-center w-full p-2 text-sm font-medium text-center bg-white border rounded-lg cursor-pointer text-blue-600 border-blue-600 dark:hover:text-white dark:border-blue-500 dark:peer-checked:border-blue-500 peer-checked:border-blue-600 peer-checked:bg-blue-600 hover:text-white peer-checked:text-white dark:peer-checked:text-white hover:bg-blue-500 dark:text-blue-500 dark:bg-gray-900 dark:hover:bg-blue-600 dark:hover:border-blue-600 dark:peer-checked:bg-blue-500';
+
+                // 시간을 12시간제로 표시 (예: 14:00 -> 02:00 PM)
+                const hour = parseInt(time.split(':')[0]);
+                const minute = time.split(':')[1];
+                const period = hour >= 12 ? 'PM' : 'AM';
+                const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+                timeLabel.textContent = `${displayHour.toString().padStart(2, '0')}:${minute} ${period}`;
+
+                timeInput.addEventListener('change', function() {
+                    selectedTime = time;
+                    document.getElementById('reserve_time').value = selectedTime;
+                    updateReserveButton();
+                });
+
+                timeSlot.appendChild(timeInput);
+                timeSlot.appendChild(timeLabel);
+                timeSlotsContainer.appendChild(timeSlot);
+            });
         } else {
             timeSlotsContainer.innerHTML = '<div class="col-span-2 text-center text-gray-500">이 날짜에 예약 가능한 시간이 없습니다.</div>';
         }
+    } else {
+        timeSlotsContainer.innerHTML = '<div class="col-span-2 text-center text-gray-500">이 날짜에 예약 가능한 시간이 없습니다.</div>';
     }
+}
 
-    // 예약 버튼 상태 업데이트
-    function updateReserveButton() {
-        const reserveBtn = document.getElementById('reserve-btn');
-        reserveBtn.disabled = !(selectedDate && selectedTime);
-    }
+// 예약 버튼 상태 업데이트
+function updateReserveButton() {
+    const reserveBtn = document.getElementById('reserve-btn');
+    reserveBtn.disabled = !(selectedDate && selectedTime);
+}
 
-    // 페이지 로드 시 달력 생성
-    document.addEventListener('DOMContentLoaded', function() {
-        generateCalendar();
-    });
+// 페이지 로드 시 달력 생성
+document.addEventListener('DOMContentLoaded', function() {
+    generateCalendar();
+});
 </script>
 {% endblock %}

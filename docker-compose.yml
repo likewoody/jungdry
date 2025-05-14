@@ -7,13 +7,13 @@ services:
       - .env
     environment:
       - MONGO_URI=mongodb://mongo:27017/jungdry
+      - TZ=Asia/Seoul
     depends_on:
       - mongo
     volumes:
       - ./static:/app/static
       - ./templates:/app/templates
       - ./:/app
-    # 시작 스크립트 변경
     command: >
       sh -c "
         python -c 'import time; time.sleep(5)'  &&  # MongoDB가 완전히 시작되도록 대기
