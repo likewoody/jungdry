@@ -205,84 +205,83 @@ def cancel_reservation(reservation_id):
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == 'POST':
-        email_id = request.form['username']
-        domain = request.form['userdomain']
+        # 폼 데이터에서 이메일과 비밀번호 가져오기
+        email = request.form['email']
         password = request.form['password']
+        
+        # 이메일 확인
+        user = db.user.find_one({'email': email})
+        
+        if not user:
+            session['message'] = "이메일 또는 비밀번호가 올바르지 않습니다."  # 오류 메시지 세션에 저장
+            session['message_type'] = 'error'  # 메시지 유형 저장
+            return redirect(url_for('login'))  # 로그인 페이지로 리디렉션
 
-        full_email = f"{email_id}@{domain}"
-
-        user = db.user.find_one({'email': full_email})
-
-        if user and user['password'] == password:
-            session['user'] = full_email
-            session['message'] = "로그인 성공!"
-            session['message_type'] = 'success'
-            return redirect(url_for('dashboard'))
+        # 비밀번호 검증
+        if check_password_hash(user['password'], password):
+            # 세션에 사용자 정보 저장 (로그인 처리)
+            session['user_id'] = str(user['_id'])  # 사용자 ID를 세션에 저장
+            session['message'] = "로그인 성공!"  # 성공 메시지 세션에 저장
+            session['message_type'] = 'success'  # 메시지 유형 저장
+            return redirect(url_for('index'))  # 로그인 후 인덱스 페이지로 리디렉션
         else:
-            session['message'] = "이메일 또는 비밀번호가 올바르지 않습니다."
-            session['message_type'] = 'error'
-            return redirect(url_for('login'))
+            session['message'] = "이메일 또는 비밀번호가 올바르지 않습니다."  # 오류 메시지 세션에 저장
+            session['message_type'] = 'error'  # 메시지 유형 저장
+            return redirect(url_for('login'))  # 로그인 페이지로 리디렉션
 
+    # GET 요청 시 로그인 페이지 렌더링
     return render_template('login.html')
 
 # -------------------------------
 # 회원가입 페이지 렌더링
 # -------------------------------
-@app.route('/register')
-def reg_page():
-    return render_template('reg.html')
-
-# -------------------------------
-# 회원가입 처리
-# -------------------------------
-# 회원가입 처리 라우트
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        email_id = request.form['emaile']
-        domain = request.form['userdomain']
-        password = request.form['password']
-        confirm = request.form['confirm']
-        phone_prefix = request.form['phonePrefix']
-        phone_num = request.form['phoneNum']
+        email = request.form.get('email')
+        password = request.form.get('password')
+        phone = request.form.get('phone_Number')
+        
+        print(f'test{email}')
+        print(f'test{password}')
+        print(f'test{phone}')
 
-        # 이메일 유효성 검사
-        if not email_id or not domain:
-            session['message'] = "이메일을 입력해주세요."
+        # 필수 입력값 검증
+        if not email or not password or not phone:
+            session['message'] = '모든 필드를 입력해주세요.'
+            session['message_type'] = 'error'
+            return redirect(url_for('register'))
+        
+        # 이메일 중복 체크
+        if db.user.find_one({'email': email}):
+            session['message'] = '이미 등록된 이메일입니다.'
             session['message_type'] = 'error'
             return redirect(url_for('register'))
 
-        full_email = f"{email_id}@{domain}"
+        # 비밀번호 해싱
+        hashed_pw = generate_password_hash(password)
 
-        # 비밀번호 확인
-        if password != confirm:
-            session['message'] = "비밀번호가 일치하지 않습니다."
-            session['message_type'] = 'error'
-            return redirect(url_for('register'))
+        # 사용자 저장
+        db.user.insert_one({
+            'email': email,
+            'password': hashed_pw,
+            'phone_number': phone,
+            'created_at': datetime.now()
+        })
 
-        # 전화번호 유효성 검사
-        if not re.match(r'^\d{7,8}$', phone_num):
-            session['message'] = "전화번호는 숫자 7~8자리여야 합니다."
-            session['message_type'] = 'error'
-            return redirect(url_for('register'))
-
-        # 전화번호 형식 지정
-        # formatted_phone = format_phone_number(phone_prefix, phone_num)
-
-        # 사용자 데이터 저장 (예: MongoDB)
-        # db.user.insert_one({
-        #     'email': full_email,
-        #     'password': password,  # 실제로는 해싱된 비밀번호를 저장해야 합니다.
-        #     'phone': formatted_phone,
-        #     'created_at': datetime.now()
-        # })
-
-        session['message'] = "회원가입이 완료되었습니다. 로그인해주세요."
+        session['message'] = '회원가입이 완료되었습니다. 로그인해주세요.'
         session['message_type'] = 'success'
         return redirect(url_for('login'))
 
     return render_template('register.html')
 
+@app.route("/logout")
+def logout():
+    session.pop("user_id", None)
+    session.pop("user", None)
+    session['message'] = "로그아웃되었습니다."
+    session['message_type'] = "success"
+    return redirect(url_for("login"))
 # -------------------------------
 # JWT 인증 테스트용 보호된 라우트
 # -------------------------------
@@ -292,10 +291,5 @@ def protected():
     current_user = get_jwt_identity()
     return f'{current_user}님 안녕하세요!'
 
-@app.route("/logout")
-def logout():
-    session.pop("user_id", None)
-    return redirect(url_for("login"))
-
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
