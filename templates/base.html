@@ -3,10 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>기숙사 세탁기 예약 시스템</title>
-    <meta name="theme-color" content="#4a5568">
+    <title>Jungdry</title>
+    <meta name="theme-color" content="#3b82f6">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 아이콘을 위한 Font Awesome CDN 추가 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google 폰트 추가 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        /* 로고 스타일 */
+        .logo-text {
+            background: linear-gradient(to right, #3b82f6, #2563eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+        }
+    </style>
     <!-- PWA 관련 스크립트 -->
     <script>
         if ('serviceWorker' in navigator) {
@@ -23,27 +40,87 @@
     </script>
     {% block head %}{% endblock %}
 </head>
-<body class="bg-gray-100 font-sans leading-normal tracking-normal">
-    <nav class="bg-blue-600 text-white p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <a href="{{ url_for('index') }}" class="text-xl font-bold">기숙사 세탁기 예약</a>
-            <div>
-                {% if is_logged_in %}
-                <a href="{{ url_for('my_reservations') }}" class="mr-4">내 예약</a>
-                <a href="{{ url_for('logout') }}">로그아웃</a>
-                {% else %}
-                <a href="{{ url_for('login') }}">로그인</a>
-                {% endif %}
+<body class="bg-gray-50 font-sans leading-normal tracking-normal min-h-screen flex flex-col">
+    <!-- 모바일 최적화 네비게이션 바 -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-7">
+            <!-- 모바일 네비게이션 -->
+            <div class="md:hidden flex items-center justify-between">
+                <!-- 왼쪽 빈 공간 -->
+                <div class="w-10"></div>
+
+                <!-- 왼쪽 티셔츠 아이콘 -->
+<!--                <div class="flex items-center">-->
+<!--                    <a href="{{ url_for('index') }}" class="text-blue-600 hover:text-blue-800" aria-label="홈">-->
+<!--                        <i class="fas fa-tshirt text-xl"></i>-->
+<!--                    </a>-->
+<!--                </div>-->
+
+                <!-- 가운데 로고 -->
+                <div class="text-center">
+                    <a href="{{ url_for('index') }}" class="inline-block">
+                        <h1 class="text-3xl font-bold logo-text">Jungdry</h1>
+                    </a>
+                </div>
+
+                <!-- 오른쪽 아이콘 메뉴 -->
+                <div class="flex items-center space-x-4">
+                    {% if is_logged_in %}
+                    <a href="{{ url_for('my_reservations') }}" class="text-gray-700 hover:text-blue-600" aria-label="내 예약">
+                        <i class="fas fa-calendar-check text-xl"></i>
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="text-gray-700 hover:text-blue-600" aria-label="로그아웃">
+                        <i class="fas fa-sign-out-alt text-xl"></i>
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('login') }}" class="text-gray-700 hover:text-blue-600" aria-label="로그인">
+                        <i class="fas fa-sign-in-alt text-xl"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 데스크톱 네비게이션 -->
+            <div class="hidden md:flex md:justify-between md:items-center">
+                <a href="{{ url_for('index') }}" class="text-xl font-bold logo-text flex items-center">
+                    <i class="fas fa-tshirt mr-2"></i>
+                    Jungdry
+                </a>
+                <div class="flex items-center space-x-6">
+                    {% if is_logged_in %}
+                    <a href="{{ url_for('my_reservations') }}" class="text-gray-700 hover:text-blue-600">
+                        <span class="flex items-center">
+                            <i class="fas fa-calendar-check mr-1"></i>
+                            내 예약
+                        </span>
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="text-gray-700 hover:text-blue-600">
+                        <span class="flex items-center">
+                            <i class="fas fa-sign-out-alt mr-1"></i>
+                            로그아웃
+                        </span>
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('login') }}" class="text-gray-700 hover:text-blue-600">
+                        <span class="flex items-center">
+                            <i class="fas fa-sign-in-alt mr-1"></i>
+                            로그인
+                        </span>
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </nav>
 
-    <div class="container mx-auto p-4">
+    <main class="container mx-auto p-4 flex-grow">
         {% block content %}{% endblock %}
-    </div>
+    </main>
 
-    <footer class="bg-gray-200 text-center p-4 mt-8">
-        <p>© 2025 기숙사 세탁기 예약 시스템</p>
+    <footer class="bg-gray-800 text-gray-300 text-center p-4 mt-8">
+        <div class="container mx-auto">
+            <p>© 2025 Jungdry - 크래프톤 정글 기숙사 세탁기 예약 시스템</p>
+        </div>
     </footer>
 </body>
 </html>

@@ -116,12 +116,12 @@
             <!-- 시간 선택 부분 -->
             <div class="md:w-64 mt-6 md:mt-0 md:border-l md:border-gray-200 md:pl-5">
                 <h2 class="text-xl font-bold mb-4">시간 선택</h2>
-                <button type="button" data-collapse-toggle="timetable" class="inline-flex items-center w-full py-2 px-5 justify-center text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 mb-4">
-                    <svg class="w-4 h-4 text-gray-800 me-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                        <path fill-rule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm11-4a1 1 0 1 0-2 0v4a1 1 0 0 0 .293.707l3 3a1 1 0 0 0 1.414-1.414L13 11.586V8Z" clip-rule="evenodd"/>
-                    </svg>
-                    시간 선택하기
-                </button>
+<!--                <button type="button" data-collapse-toggle="timetable" class="inline-flex items-center w-full py-2 px-5 justify-center text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 mb-4">-->
+<!--                    <svg class="w-4 h-4 text-gray-800 me-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">-->
+<!--                        <path fill-rule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm11-4a1 1 0 1 0-2 0v4a1 1 0 0 0 .293.707l3 3a1 1 0 0 0 1.414-1.414L13 11.586V8Z" clip-rule="evenodd"/>-->
+<!--                    </svg>-->
+<!--                    시간 선택하기-->
+<!--                </button>-->
 
                 <div id="timetable" class="time-slots-container">
                     <h3 id="selected-date-display" class="text-base font-medium text-gray-900 mb-3 text-center">날짜를 먼저 선택해주세요</h3>
@@ -302,9 +302,30 @@ function updateReserveButton() {
     reserveBtn.disabled = !(selectedDate && selectedTime);
 }
 
-// 페이지 로드 시 달력 생성
+// 페이지 로드 시 달력 생성 및 오늘 날짜 자동 선택
 document.addEventListener('DOMContentLoaded', function() {
     generateCalendar();
+
+    // 오늘 날짜 자동 선택
+    selectTodayDate();
 });
+
+// 오늘 날짜 자동 선택 함수
+function selectTodayDate() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    // 오늘 날짜에 해당하는 버튼 찾기
+    const todayButton = document.querySelector(`#calendar-days button[data-date="${todayStr}"]`);
+
+    // 버튼이 존재하고 사용 가능한 경우에만 클릭
+    if (todayButton && !todayButton.classList.contains('text-gray-400')) {
+        // 버튼 클릭 이벤트 발생시키기
+        todayButton.click();
+    }
+}
 </script>
 {% endblock %}

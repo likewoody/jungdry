@@ -1,23 +1,39 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-6">세탁기/건조기 현황</h1>
+<!--<h2 class="text-2xl font-bold mb-6">세탁기/건조기를 예약해보세요!</h2>-->
+
+<!-- 상태 범례 -->
+<div class="flex flex-wrap items-center gap-6 mb-6 px-4 py-3 bg-white rounded-lg shadow-sm">
+    <div class="flex items-center">
+        <div class="w-4 h-4 bg-green-500 rounded mr-2"></div>
+        <span class="text-sm">사용 가능한 세탁기</span>
+    </div>
+    <div class="flex items-center">
+        <div class="w-4 h-4 bg-blue-500 rounded mr-2"></div>
+        <span class="text-sm">사용 가능한 건조기</span>
+    </div>
+    <div class="flex items-center">
+        <div class="w-4 h-4 bg-red-500 rounded mr-2"></div>
+        <span class="text-sm">사용 중</span>
+    </div>
+</div>
 
 <!-- 세탁기 섹션 -->
 <h2 class="text-xl font-semibold mb-4">세탁기</h2>
-<div class="grid grid-cols-7 gap-4 mb-8">
+<div class="grid grid-cols-7 gap-2 sm:gap-4 mb-8">
     {% for laundry in laundries %}
     {% if laundry.type == 'washer' %}
-    <div class="relative">
+    <div class="aspect-square"> <!-- 정사각형 비율 유지 -->
         <a href="{{ url_for('reserve', laundry_id=laundry._id) }}"
-           class="block p-6 rounded-lg shadow-md text-center font-bold text-white
+           class="flex flex-col items-center justify-center h-full rounded-lg shadow-md text-white text-center
                   {% if laundry.status == 0 %}
                   bg-green-500 hover:bg-green-600
                   {% else %}
                   bg-red-500 hover:bg-red-600
                   {% endif %}">
-            세탁기 {{ laundry.id }}
-            <div class="mt-2 text-sm">
+            <span class="text-sm sm:text-base md:text-lg lg:text-xl font-bold">{{ laundry.id }}</span>
+            <div class="text-[8px] sm:text-xs md:text-sm mt-1 hidden sm:block"> <!-- 모바일에서는 숨김 -->
                 {% if laundry.status == 0 %}
                 사용 가능
                 {% else %}
@@ -32,19 +48,19 @@
 
 <!-- 건조기 섹션 -->
 <h2 class="text-xl font-semibold mb-4">건조기</h2>
-<div class="grid grid-cols-7 gap-4 mb-8">
+<div class="grid grid-cols-7 gap-2 sm:gap-4 mb-8">
     {% for laundry in laundries %}
     {% if laundry.type == 'dryer' %}
-    <div class="relative">
+    <div class="aspect-square"> <!-- 정사각형 비율 유지 -->
         <a href="{{ url_for('reserve', laundry_id=laundry._id) }}"
-           class="block p-6 rounded-lg shadow-md text-center font-bold text-white
+           class="flex flex-col items-center justify-center h-full rounded-lg shadow-md text-white text-center
                   {% if laundry.status == 0 %}
                   bg-blue-500 hover:bg-blue-600
                   {% else %}
                   bg-red-500 hover:bg-red-600
                   {% endif %}">
-            건조기 {{ laundry.id }}
-            <div class="mt-2 text-sm">
+            <span class="text-sm sm:text-base md:text-lg lg:text-xl font-bold">{{ laundry.id }}</span>
+            <div class="text-[8px] sm:text-xs md:text-sm mt-1 hidden sm:block"> <!-- 모바일에서는 숨김 -->
                 {% if laundry.status == 0 %}
                 사용 가능
                 {% else %}

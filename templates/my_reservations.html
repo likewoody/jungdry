@@ -41,7 +41,7 @@
                     {% if reservation.start_time <= now and reservation.end_time >= now %}
                     현재 이용 가능
                     {% elif reservation.start_time > now %}
-                    예약 대기 중
+                    예약 완료
                     {% else %}
                     이용 완료
                     {% endif %}

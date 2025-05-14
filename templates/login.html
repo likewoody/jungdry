@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md">
+<div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md" style="margin-top: 10%">
     <h1 class="text-2xl font-bold mb-6 text-center">로그인</h1>
 
     {% if error %}
@@ -28,7 +28,7 @@
         <div class="mt-4 text-center">
             <p class="text-sm text-gray-600">계정이 없으신가요? <a href="{{ url_for('register') }}" class="text-blue-500 hover:underline">회원가입</a></p>
         </div>
-        <div class="text-center">
+        <div class="text-center" style="margin-top: 13px">
             <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">
                 로그인
             </button>
