@@ -10,8 +10,5 @@ COPY . /app/
 # 4. 패키지 설치 (requirements.txt)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. 코드 재복사
-COPY . /app/
-
-# 6. 앱 실행
+# 5. 앱 실행
 CMD ["python", "app.py"]

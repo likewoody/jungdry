@@ -68,4 +68,58 @@
         <li>예약 취소는 '내 예약' 메뉴에서 가능합니다.</li>
     </ul>
 </div>
+
+<script>
+// 액세스 토큰 만료 시 처리
+async function refreshToken() {
+  try {
+    const response = await fetch('/api/refresh', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      // 리프레시 토큰까지 만료되었다면 로그인 페이지로
+      window.location.href = '/login';
+      return false;
+    }
+
+    const data = await response.json();
+    return true;
+  } catch (error) {
+    console.error('토큰 갱신 오류:', error);
+    return false;
+  }
+}
+
+// API 요청 래퍼 함수 (액세스 토큰 만료 자동 처리)
+async function fetchWithToken(url, options = {}) {
+  // 첫 요청 시도
+  let response = await fetch(url, {
+    ...options,
+    credentials: 'same-origin',
+  });
+
+  // 401 Unauthorized - 액세스 토큰 만료
+  if (response.status === 401) {
+    const refreshSuccess = await refreshToken();
+    if (!refreshSuccess) {
+      throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+    }
+
+    // 새 토큰으로 다시 요청
+    response = await fetch(url, {
+      ...options,
+      credentials: 'same-origin',
+    });
+  }
+
+  return response;
+}
+</script>
+
+
 {% endblock %}

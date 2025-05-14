@@ -28,6 +28,7 @@ campus_id = db.campus.insert_one({
 user_id = db.user.insert_one({
     "email": "user@example.com",
     "pw": "password123",  # 실제 구현에서는 비밀번호 해싱 필요
+    "phone_number": "01012341234",  # 실제 구현에서는 비밀번호 해싱 필요
 }).inserted_id
 
 # 세탁기 데이터 추가 (7대)
