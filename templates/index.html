@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-6">세탁기 현황</h1>
+<h1 class="text-2xl font-bold mb-6">세탁기/건조기 현황</h1>
 
-<div class="grid grid-cols-4 gap-4 mb-8">
+<!-- 세탁기 섹션 -->
+<h2 class="text-xl font-semibold mb-4">세탁기</h2>
+<div class="grid grid-cols-7 gap-4 mb-8">
     {% for laundry in laundries %}
+    {% if laundry.type == 'washer' %}
     <div class="relative">
         <a href="{{ url_for('reserve', laundry_id=laundry._id) }}"
            class="block p-6 rounded-lg shadow-md text-center font-bold text-white
@@ -13,7 +16,7 @@
                   {% else %}
                   bg-red-500 hover:bg-red-600
                   {% endif %}">
-            세탁기 {{ loop.index }}
+            세탁기 {{ laundry.id }}
             <div class="mt-2 text-sm">
                 {% if laundry.status == 0 %}
                 사용 가능
@@ -23,16 +26,45 @@
             </div>
         </a>
     </div>
+    {% endif %}
+    {% endfor %}
+</div>
+
+<!-- 건조기 섹션 -->
+<h2 class="text-xl font-semibold mb-4">건조기</h2>
+<div class="grid grid-cols-7 gap-4 mb-8">
+    {% for laundry in laundries %}
+    {% if laundry.type == 'dryer' %}
+    <div class="relative">
+        <a href="{{ url_for('reserve', laundry_id=laundry._id) }}"
+           class="block p-6 rounded-lg shadow-md text-center font-bold text-white
+                  {% if laundry.status == 0 %}
+                  bg-blue-500 hover:bg-blue-600
+                  {% else %}
+                  bg-red-500 hover:bg-red-600
+                  {% endif %}">
+            건조기 {{ laundry.id }}
+            <div class="mt-2 text-sm">
+                {% if laundry.status == 0 %}
+                사용 가능
+                {% else %}
+                사용 중
+                {% endif %}
+            </div>
+        </a>
+    </div>
+    {% endif %}
     {% endfor %}
 </div>
 
 <div class="bg-white p-6 rounded-lg shadow-md">
     <h2 class="text-xl font-bold mb-4">이용 안내</h2>
     <ul class="list-disc pl-5 space-y-2">
-        <li>세탁기는 1회 사용 시 최대 1시간 30분까지 예약 가능합니다.</li>
-        <li>녹색 세탁기는 현재 사용 가능한 세탁기입니다.</li>
-        <li>빨간색 세탁기는 현재 사용 중이거나 예약된 세탁기입니다.</li>
-        <li>예약 시간 10분 전부터 세탁기 사용이 가능합니다.</li>
+        <li>세탁기는 1회 사용 시 1시간 단위로 예약할 수 있습니다.</li>
+        <li>건조기는 1회 사용 시 2시간 단위로 예약할 수 있습니다.</li>
+        <li>녹색 세탁기와 파란색 건조기는 현재 사용 가능한 기기입니다.</li>
+        <li>빨간색은 현재 사용 중이거나 예약된 기기입니다.</li>
+        <li>오전 0시부터 6시까지는 예약이 불가능합니다.</li>
         <li>예약 취소는 '내 예약' 메뉴에서 가능합니다.</li>
     </ul>
 </div>

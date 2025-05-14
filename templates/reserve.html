@@ -13,11 +13,62 @@
         background-color: #3182ce;
         color: white;
     }
+
+    /* 캘린더와 시간 선택 관련 새로운 스타일 */
+    .time-slot-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+
+    /* 시간 선택 버튼 스타일 */
+    .time-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-align: center;
+        background-color: white;
+        border: 1px solid #3b82f6;
+        border-radius: 0.375rem;
+        color: #3b82f6;
+        cursor: pointer;
+    }
+
+    .time-btn:hover {
+        background-color: #3b82f6;
+        color: white;
+    }
+
+    .time-btn.selected {
+        background-color: #3b82f6;
+        color: white;
+    }
+
+    .time-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        border-color: #e5e7eb;
+        color: #9ca3af;
+    }
+
+    .time-btn.disabled:hover {
+        background-color: #f3f4f6;
+        color: #9ca3af;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-6">세탁기 {{ laundry._id }} 예약</h1>
+<!-- 기기 유형에 따라 다른 제목 표시 -->
+{% if laundry.type == 'dryer' %}
+<h1 class="text-2xl font-bold mb-6">건조기 {{ laundry.id }} 예약</h1>
+{% else %}
+<h1 class="text-2xl font-bold mb-6">세탁기 {{ laundry.id }} 예약</h1>
+{% endif %}
 
 {% if error %}
 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -26,36 +77,67 @@
 {% endif %}
 
 <div class="bg-white p-6 rounded-lg shadow-md">
-    <form action="{{ url_for('reserve', laundry_id=laundry._id) }}" method="POST">
-        <div class="mb-6">
-            <h2 class="text-xl font-bold mb-4">날짜 선택</h2>
-            <div class="grid grid-cols-7 gap-2">
-                {% for date_str in available_times.keys() %}
-                <div class="date-option">
-                    <button type="button"
-                            class="date-btn w-full py-2 px-4 rounded bg-gray-200 hover:bg-gray-300"
-                            data-date="{{ date_str }}">
-                        {{ date_str }}
-                    </button>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
+    <!-- 기기 유형에 따른 정보 표시 -->
+    <div class="mb-4 p-3 {% if laundry.type == 'dryer' %}bg-blue-100{% else %}bg-green-100{% endif %} rounded-lg">
+        <p class="font-medium">
+            {% if laundry.type == 'dryer' %}
+            건조기 예약 시간은 <span class="font-bold">2시간</span>입니다.
+            {% else %}
+            세탁기 예약 시간은 <span class="font-bold">1시간</span>입니다.
+            {% endif %}
+        </p>
+    </div>
 
-        <div class="mb-6">
-            <h2 class="text-xl font-bold mb-4">시간 선택</h2>
-            <div class="time-slots grid grid-cols-4 gap-2">
-                <!-- 여기에 JavaScript로 시간 슬롯이 채워집니다 -->
-                <div class="col-span-4 text-center text-gray-500">날짜를 먼저 선택해주세요.</div>
+    <form action="{{ url_for('reserve', laundry_id=laundry._id) }}" method="POST">
+        <div class="pt-5 border-t border-gray-200 flex flex-col md:flex-row md:space-x-5">
+            <!-- 캘린더 부분 -->
+            <div class="flex-1">
+                <h2 class="text-xl font-bold mb-4">날짜 선택</h2>
+                <div class="calendar-container bg-white p-4 rounded-lg border border-gray-200">
+                    <!-- 여기서는 간단한 날짜 선택 버튼들을 표시 -->
+                    <div class="grid grid-cols-7 gap-2 mb-2">
+                        <div class="text-center text-sm font-medium text-gray-500">일</div>
+                        <div class="text-center text-sm font-medium text-gray-500">월</div>
+                        <div class="text-center text-sm font-medium text-gray-500">화</div>
+                        <div class="text-center text-sm font-medium text-gray-500">수</div>
+                        <div class="text-center text-sm font-medium text-gray-500">목</div>
+                        <div class="text-center text-sm font-medium text-gray-500">금</div>
+                        <div class="text-center text-sm font-medium text-gray-500">토</div>
+                    </div>
+
+                    <div class="grid grid-cols-7 gap-2" id="calendar-days">
+                        <!-- JavaScript로 채워질 부분 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 시간 선택 부분 -->
+            <div class="md:w-64 mt-6 md:mt-0 md:border-l md:border-gray-200 md:pl-5">
+                <h2 class="text-xl font-bold mb-4">시간 선택</h2>
+                <button type="button" data-collapse-toggle="timetable" class="inline-flex items-center w-full py-2 px-5 justify-center text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 mb-4">
+                    <svg class="w-4 h-4 text-gray-800 me-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                        <path fill-rule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm11-4a1 1 0 1 0-2 0v4a1 1 0 0 0 .293.707l3 3a1 1 0 0 0 1.414-1.414L13 11.586V8Z" clip-rule="evenodd"/>
+                    </svg>
+                    시간 선택하기
+                </button>
+
+                <div id="timetable" class="time-slots-container">
+                    <h3 id="selected-date-display" class="text-base font-medium text-gray-900 mb-3 text-center">날짜를 먼저 선택해주세요</h3>
+
+                    <ul class="time-slot-grid" id="time-slots">
+                        <!-- JavaScript로 채워질 부분 -->
+                        <div class="col-span-2 text-center text-gray-500">날짜를 먼저 선택해주세요.</div>
+                    </ul>
+                </div>
             </div>
         </div>
 
         <input type="hidden" name="reserve_date" id="reserve_date">
         <input type="hidden" name="reserve_time" id="reserve_time">
 
-        <div class="text-center">
+        <div class="text-center mt-6">
             <button type="submit"
-                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+                    class="{% if laundry.type == 'dryer' %}bg-blue-500 hover:bg-blue-600{% else %}bg-green-500 hover:bg-green-600{% endif %} text-white font-bold py-2 px-4 rounded disabled:opacity-50"
                     id="reserve-btn" disabled>
                 예약하기
             </button>
@@ -69,60 +151,139 @@
     let selectedDate = null;
     let selectedTime = null;
 
-    // 날짜 버튼 이벤트
-    document.querySelectorAll('.date-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            // 이전 선택 초기화
-            document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('bg-blue-500', 'text-white'));
+    // 달력 생성 함수
+    function generateCalendar() {
+        const calendarContainer = document.getElementById('calendar-days');
+        calendarContainer.innerHTML = '';
 
-            // 현재 선택
-            this.classList.add('bg-blue-500', 'text-white');
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
 
-            // 선택된 날짜 저장
-            selectedDate = this.dataset.date;
-            document.getElementById('reserve_date').value = selectedDate;
+        // 이번 달의 첫 날과 마지막 날
+        const firstDay = new Date(currentYear, currentMonth, 1);
+        const lastDay = new Date(currentYear, currentMonth + 1, 0);
 
-            // 시간 슬롯 업데이트
-            updateTimeSlots(selectedDate);
+        // 이번 달 첫 날의 요일 (0: 일요일, 6: 토요일)
+        const firstDayOfWeek = firstDay.getDay();
 
-            // 시간 선택 초기화
-            selectedTime = null;
-            document.getElementById('reserve_time').value = '';
-            updateReserveButton();
-        });
-    });
+        // 이전 달의 날짜들 (비활성화)
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            const dayElement = document.createElement('div');
+            dayElement.className = 'text-center p-1 text-gray-300';
+            calendarContainer.appendChild(dayElement);
+        }
+
+        // 이번 달의 날짜들
+        for (let i = 1; i <= lastDay.getDate(); i++) {
+            const dateObj = new Date(currentYear, currentMonth, i);
+            const dateStr = dateObj.toISOString().split('T')[0];
+
+            const dayElement = document.createElement('button');
+            dayElement.type = 'button';
+            dayElement.className = 'text-center p-2 rounded';
+
+            // 오늘 날짜 강조
+            if (dateObj.toDateString() === today.toDateString()) {
+                dayElement.classList.add('bg-blue-100');
+            }
+
+            // 예약 가능한 날짜인지 확인
+            const isAvailable = availableTimes.hasOwnProperty(dateStr) && availableTimes[dateStr].length > 0;
+
+            if (isAvailable) {
+                dayElement.classList.add('hover:bg-blue-200', 'cursor-pointer', 'text-gray-900');
+                dayElement.dataset.date = dateStr;
+
+                dayElement.addEventListener('click', function() {
+                    // 이전 선택 초기화
+                    document.querySelectorAll('#calendar-days button.bg-blue-500').forEach(el => {
+                        el.classList.remove('bg-blue-500', 'text-white');
+                        if (el.toDateString === today.toDateString()) {
+                            el.classList.add('bg-blue-100');
+                        }
+                    });
+
+                    // 현재 선택
+                    this.classList.add('bg-blue-500', 'text-white');
+                    this.classList.remove('bg-blue-100');
+
+                    // 선택된 날짜 저장
+                    selectedDate = this.dataset.date;
+                    document.getElementById('reserve_date').value = selectedDate;
+
+                    // 선택된 날짜 표시
+                    const dateObj = new Date(selectedDate);
+                    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                    document.getElementById('selected-date-display').textContent = dateObj.toLocaleDateString('ko-KR', options);
+
+                    // 시간 슬롯 업데이트
+                    updateTimeSlots(selectedDate);
+
+                    // 시간 선택 초기화
+                    selectedTime = null;
+                    document.getElementById('reserve_time').value = '';
+                    updateReserveButton();
+                });
+            } else {
+                dayElement.classList.add('text-gray-400');
+            }
+
+            dayElement.textContent = i;
+            calendarContainer.appendChild(dayElement);
+        }
+    }
 
     // 시간 슬롯 업데이트 함수
     function updateTimeSlots(date) {
-        const timeSlotsContainer = document.querySelector('.time-slots');
+        const timeSlotsContainer = document.getElementById('time-slots');
         timeSlotsContainer.innerHTML = '';
 
         const times = availableTimes[date];
         if (times && times.length > 0) {
-            times.forEach(time => {
-                const timeSlot = document.createElement('div');
-                timeSlot.className = 'time-slot py-2 px-4 rounded bg-gray-200 text-center';
-                timeSlot.textContent = time;
-                timeSlot.dataset.time = time;
-
-                timeSlot.addEventListener('click', function() {
-                    // 이전 선택 초기화
-                    document.querySelectorAll('.time-slot').forEach(slot => slot.classList.remove('selected'));
-
-                    // 현재 선택
-                    this.classList.add('selected');
-
-                    // 선택된 시간 저장
-                    selectedTime = this.dataset.time;
-                    document.getElementById('reserve_time').value = selectedTime;
-
-                    updateReserveButton();
-                });
-
-                timeSlotsContainer.appendChild(timeSlot);
+            // 06:00부터 23:00까지만 표시 (00:00~05:59 제외)
+            const filteredTimes = times.filter(time => {
+                const hour = parseInt(time.split(':')[0]);
+                return hour >= 6;
             });
+
+            if (filteredTimes.length > 0) {
+                filteredTimes.sort().forEach(time => {
+                    const timeSlot = document.createElement('li');
+
+                    const timeInput = document.createElement('input');
+                    timeInput.type = 'radio';
+                    timeInput.id = `time-${time}`;
+                    timeInput.value = time;
+                    timeInput.name = 'timetable';
+                    timeInput.classList.add('hidden', 'peer');
+
+                    const timeLabel = document.createElement('label');
+                    timeLabel.htmlFor = `time-${time}`;
+                    timeLabel.className = 'inline-flex items-center justify-center w-full p-2 text-sm font-medium text-center bg-white border rounded-lg cursor-pointer text-blue-600 border-blue-600 dark:hover:text-white dark:border-blue-500 dark:peer-checked:border-blue-500 peer-checked:border-blue-600 peer-checked:bg-blue-600 hover:text-white peer-checked:text-white dark:peer-checked:text-white hover:bg-blue-500 dark:text-blue-500 dark:bg-gray-900 dark:hover:bg-blue-600 dark:hover:border-blue-600 dark:peer-checked:bg-blue-500';
+
+                    // 시간을 12시간제로 표시 (예: 14:00 -> 02:00 PM)
+                    const hour = parseInt(time.split(':')[0]);
+                    const minute = time.split(':')[1];
+                    const period = hour >= 12 ? 'PM' : 'AM';
+                    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+                    timeLabel.textContent = `${displayHour.toString().padStart(2, '0')}:${minute} ${period}`;
+
+                    timeInput.addEventListener('change', function() {
+                        selectedTime = time;
+                        document.getElementById('reserve_time').value = selectedTime;
+                        updateReserveButton();
+                    });
+
+                    timeSlot.appendChild(timeInput);
+                    timeSlot.appendChild(timeLabel);
+                    timeSlotsContainer.appendChild(timeSlot);
+                });
+            } else {
+                timeSlotsContainer.innerHTML = '<div class="col-span-2 text-center text-gray-500">이 날짜에 예약 가능한 시간이 없습니다.</div>';
+            }
         } else {
-            timeSlotsContainer.innerHTML = '<div class="col-span-4 text-center text-gray-500">이 날짜에 예약 가능한 시간이 없습니다.</div>';
+            timeSlotsContainer.innerHTML = '<div class="col-span-2 text-center text-gray-500">이 날짜에 예약 가능한 시간이 없습니다.</div>';
         }
     }
 
@@ -131,5 +292,10 @@
         const reserveBtn = document.getElementById('reserve-btn');
         reserveBtn.disabled = !(selectedDate && selectedTime);
     }
+
+    // 페이지 로드 시 달력 생성
+    document.addEventListener('DOMContentLoaded', function() {
+        generateCalendar();
+    });
 </script>
 {% endblock %}
