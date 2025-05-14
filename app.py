@@ -8,6 +8,7 @@ from flask_jwt_extended import JWTManager, create_access_token, create_refresh_t
 from redis_service import save_refresh_token, get_refresh_token, delete_refresh_token
 import bcrypt
 import functools
+from flask_wtf.csrf import CSRFProtect
 
 
 # 환경 변수 로드
@@ -16,13 +17,16 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "default_secret_key")
 
+# CSRF 보호 설정
+csrf = CSRFProtect(app)
+
 # JWT 설정
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(seconds=int(os.getenv("ACCESS_TOKEN_EXPIRES", 1800)))
 app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(seconds=int(os.getenv("REFRESH_TOKEN_EXPIRES", 1209600)))
 app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
 app.config["JWT_COOKIE_SECURE"] = False  # 개발 환경 : False, 프로덕션 : True
-app.config["JWT_COOKIE_CSRF_PROTECT"] = True
+app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # 충돌 발생으로 인해 JWT CSRF 보호 비활성화
 
 jwt = JWTManager(app)
 

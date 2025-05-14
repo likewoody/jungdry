@@ -89,6 +89,8 @@
     </div>
 
     <form action="{{ url_for('reserve', laundry_id=laundry._id) }}" method="POST">
+        <!-- CSRF 토큰 추가 -->
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="pt-5 border-t border-gray-200 flex flex-col md:flex-row md:space-x-5">
             <!-- 캘린더 부분 -->
             <div class="flex-1">
