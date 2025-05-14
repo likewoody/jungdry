@@ -16,7 +16,7 @@ app.secret_key = os.getenv("SECRET_KEY", "default_secret_key")
 
 # MongoDB 연결 - 도커 컴포즈 환경에 맞게 수정
 # docker-compose.yml에서 설정한 MONGO_URI 환경 변수 사용
-mongo_uri = os.getenv("MONGO_URI", "mongodb://mongo:27017/")
+mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 client = MongoClient(mongo_uri)
 db = client["jungdry"]
 
@@ -44,7 +44,6 @@ def index():
 
     # 현재 시간
     now = datetime.now()
-
 
     # 각 기기의 사용 가능 여부 확인
     for laundry in laundries:
@@ -178,6 +177,7 @@ def get_available_times(laundry_id):
 def my_reservations():
     # 현재 시간
     now = datetime.now()
+    custom_date = datetime(2025, 5, 14, 15, 5, 0)
 
     # 현재 로그인한 사용자의 예약 목록 가져오기
     reservations = list(db.use.find({"user_id": ObjectId(session["user_id"])}).sort("start_time", 1))
@@ -185,9 +185,17 @@ def my_reservations():
     # 세탁기 정보 추가
     for reservation in reservations:
         laundry = db.laundry.find_one({"_id": reservation["laundry_id"]})
+        if reservation.get('start_time') <= now and reservation.get('end_time') >= now:
+            db.use.update_one({'laundry_id':laundry['_id']},{'$set':{'status':"using"}})
+        elif reservation.get('end_time') <= now:
+            db.use.update_one({'laundry_id':laundry['_id']},{'$set':{'status':"finished"}})
         reservation["laundry_info"] = laundry
 
-    return render_template("my_reservations.html", reservations=reservations, now=now)
+    # 상태별 정렬 우선순위 정의
+    reservations.sort(key=lambda x: x.get('status'), reverse=True)
+
+    return render_template("my_reservations.html", reservations=reservations, now=custom_date)
+
 
 
 @app.route("/cancel_reservation/<reservation_id>")
@@ -218,7 +226,7 @@ def login():
             return redirect(url_for('login'))  # 로그인 페이지로 리디렉션
 
         # 비밀번호 검증
-        if check_password_hash(user['password'], password):
+        if check_password_hash(user['password'], password): # password or pw
             # 세션에 사용자 정보 저장 (로그인 처리)
             session['user_id'] = str(user['_id'])  # 사용자 ID를 세션에 저장
             session['message'] = "로그인 성공!"  # 성공 메시지 세션에 저장
@@ -292,4 +300,4 @@ def protected():
     return f'{current_user}님 안녕하세요!'
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)
