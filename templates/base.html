@@ -61,7 +61,7 @@
     </script>
     {% block head %}{% endblock %}
 </head>
-<body class="bg-blue-100 flex items-center justify-center h-screen font-sans">
+<!-- <body class="bg-blue-100 flex items-center justify-center h-screen font-sans">
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-4 border-blue-300">
         <h2 class="text-3xl font-bold text-center text-blue-600 mb-6">로그인</h2>
 
@@ -74,7 +74,7 @@
     {% endif %}
 
         <form method="POST" action="/api/login" class="space-y-4" onsubmit="return validateForm()">
-        <!-- 이메일 -->
+        <!-- 이메일
         <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">이메일</label>
             <div class="flex gap-2">
@@ -98,7 +98,7 @@
             </select>
         </div>
 
-        <!-- 비밀번호 -->
+        <!-- 비밀번호
         <div>
             <label class="block text-sm font-medium text-gray-600 mb-1">비밀번호</label>
             <input type="password" name="password" placeholder="비밀번호"
@@ -106,21 +106,21 @@
             required>
         </div>
 
-        <!-- 로그인 버튼 -->
+        <!-- 로그인 버튼
         <button type="submit"
             class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-lg transition">
             로그인
         </button>
         </form>
 
-        <!-- 회원가입 안내 -->
+        <!-- 회원가입 안내
         <p class="mt-4 text-center text-sm">
         아직 회원이 아니신가요?
         <a href="/register" class="text-blue-600 hover:underline">회원가입</a>
         </p>
     </div>
-</body>
-<!-- <body class="bg-gray-100 font-sans leading-normal tracking-normal">
+</body> -->
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
     <nav class="bg-blue-600 text-white p-4">
         <div class="container mx-auto flex justify-between items-center">
             <a href="{{ url_for('index') }}" class="text-xl font-bold">기숙사 세탁기 예약</a>
@@ -142,5 +142,5 @@
     <footer class="bg-gray-200 text-center p-4 mt-8">
         <p>© 2025 기숙사 세탁기 예약 시스템</p>
     </footer>
-</body> -->
+</body>
 </html>
