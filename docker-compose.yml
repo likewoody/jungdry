@@ -5,8 +5,21 @@ services:
       - "5001:5001"
     env_file:
       - .env
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/jungdry
     depends_on:
       - mongo
+    volumes:
+      - ./static:/app/static
+      - ./templates:/app/templates
+      - ./:/app
+    # 시작 스크립트 변경
+    command: >
+      sh -c "
+        python -c 'import time; time.sleep(5)'  &&  # MongoDB가 완전히 시작되도록 대기
+        python init_db.py &&                       # 데이터베이스 초기화
+        python app.py                              # 앱 실행
+      "
 
   mongo:
     image: mongo
