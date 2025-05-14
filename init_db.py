@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 import os
 from dotenv import load_dotenv
+import bcrypt
 
 # 환경 변수 로드
 load_dotenv()
@@ -25,11 +26,17 @@ campus_id = db.campus.insert_one({
 }).inserted_id
 
 # 사용자 데이터 추가
-user_id = db.user.insert_one({
-    "email": "user@example.com",
-    "pw": "password123",  # 실제 구현에서는 비밀번호 해싱 필요
-    "phone_number": "01012341234",  # 실제 구현에서는 비밀번호 해싱 필요
-}).inserted_id
+for i in range(1, 30):
+    # 비밀번호 해싱
+    password = "password123"
+    hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+    user_id = db.user.insert_one({
+        "email": f"user{i}@example.com",
+        "pw": hashed_pw,  # 해싱된 비밀번호 저장
+        "phone": "01012341234",
+    }).inserted_id
+
 
 # 세탁기 데이터 추가 (7대)
 laundry_ids = []

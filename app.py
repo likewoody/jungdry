@@ -139,7 +139,31 @@ def reserve(laundry_id):
         if start_time.hour < 6 and start_time.hour >= 0:
             return render_template("reserve.html", laundry=laundry, error="오전 0시부터 6시까지는 예약할 수 없습니다.")
 
-        # 해당 시간에 이미 예약이 있는지 확인
+        # 예약 잠금 문서 생성
+        lock_id = f"{laundry_id}_{start_time.isoformat()}"
+
+        # findAndModify를 사용하여 원자적으로 예약 생성 시도
+        result = db.reservation_locks.find_one_and_update(
+            {
+                "_id": lock_id,
+                "reserved": {"$ne": True}  # 아직 예약되지 않은 경우에만
+            },
+            {
+                "$set": {
+                    "reserved": True,
+                    "user_id": ObjectId(current_user_id),
+                    "timestamp": datetime.now()
+                }
+            },
+            upsert=True,
+            return_document=True
+        )
+
+        # 다른 사용자가 이미 예약한 경우
+        if result.get("user_id") != ObjectId(current_user_id):
+            return render_template("reserve.html", laundry=laundry, error="이미 예약된 시간입니다.")
+
+        # 시간 충돌 확인
         existing_reservation = db.use.find_one({
             "laundry_id": ObjectId(laundry_id),
             "$or": [
@@ -149,6 +173,8 @@ def reserve(laundry_id):
         })
 
         if existing_reservation:
+            # 잠금 해제
+            db.reservation_locks.delete_one({"_id": lock_id})
             return render_template("reserve.html", laundry=laundry, error="이미 예약된 시간입니다.")
 
         # 새 예약 생성
