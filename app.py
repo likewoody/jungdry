@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, make_response
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -7,12 +7,32 @@ from bson.objectid import ObjectId
 import re
 import os
 from dotenv import load_dotenv
+from flask_jwt_extended import JWTManager, create_access_token, create_refresh_token, jwt_required, get_jwt_identity, verify_jwt_in_request
+from redis_service import save_refresh_token, get_refresh_token, delete_refresh_token
+import bcrypt
+import functools
+from flask_wtf.csrf import CSRFProtect
+
 
 # 환경 변수 로드
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "default_secret_key")
+
+# CSRF 보호 설정
+csrf = CSRFProtect(app)
+
+# JWT 설정
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(seconds=int(os.getenv("ACCESS_TOKEN_EXPIRES", 1800)))
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(seconds=int(os.getenv("REFRESH_TOKEN_EXPIRES", 1209600)))
+app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
+app.config["JWT_COOKIE_SECURE"] = False  # 개발 환경 : False, 프로덕션 : True
+app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # 충돌 발생으로 인해 JWT CSRF 보호 비활성화
+
+jwt = JWTManager(app)
+
 
 # MongoDB 연결 - 도커 컴포즈 환경에 맞게 수정
 # docker-compose.yml에서 설정한 MONGO_URI 환경 변수 사용
@@ -25,20 +45,56 @@ app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # 비밀키 (안전하게 관�
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # 토큰 만료 시간 1시간
 jwt = JWTManager(app)
 
-# 현재 사용자가 로그인되어 있는지 확인하는 데코레이터
-def login_required(f):
+# JWT가 필요한 엔드포인트용 데코레이터
+def jwt_login_required(f):
+    @functools.wraps(f)  # 원본 함수의 메타데이터 유지
     def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
+        try:
+            # JWT 토큰 검증 시도
+            verify_jwt_in_request()
+            # JWT에서 사용자 ID 가져오기
+            current_user_id = get_jwt_identity()
+            return f(current_user_id, *args, **kwargs)
+        except:
+            # JWT 검증 실패 시 로그인 페이지로 리디렉션
             return redirect(url_for("login"))
-        return f(*args, **kwargs)
 
-    decorated_function.__name__ = f.__name__
     return decorated_function
 
 
+# # 현재 사용자가 로그인되어 있는지 확인하는 데코레이터
+# def login_required(f):
+#     def decorated_function(*args, **kwargs):
+#         if "user_id" not in session:
+#             return redirect(url_for("login"))
+#         return f(*args, **kwargs)
+#
+#     decorated_function.__name__ = f.__name__
+#     return decorated_function
+
+
 @app.route("/")
-@login_required
+def home():
+    # JWT 토큰이 있는지 확인 (로그인 상태 확인)
+    try:
+        verify_jwt_in_request(optional=True)
+        current_user = get_jwt_identity()
+        if current_user:
+            # 로그인된 경우 인덱스 페이지로
+            return redirect(url_for("index"))
+    except:
+        pass
+
+    # 로그인되지 않은 경우 로그인 페이지로
+    return redirect(url_for("login"))
+
+
+@app.route("/index")
+@jwt_required()
 def index():
+    # 현재 사용자 ID 가져오기
+    current_user_id = get_jwt_identity()
+
     # 모든 세탁기와 건조기 정보 가져오기
     laundries = list(db.laundry.find())
 
@@ -69,8 +125,9 @@ def index():
 
 
 @app.route("/reserve/<laundry_id>", methods=["GET", "POST"])
-@login_required
+@jwt_required()
 def reserve(laundry_id):
+    current_user_id = get_jwt_identity()
     laundry = db.laundry.find_one({"_id": ObjectId(laundry_id)})
 
     if request.method == "POST":
@@ -89,7 +146,31 @@ def reserve(laundry_id):
         if start_time.hour < 6 and start_time.hour >= 0:
             return render_template("reserve.html", laundry=laundry, error="오전 0시부터 6시까지는 예약할 수 없습니다.")
 
-        # 해당 시간에 이미 예약이 있는지 확인
+        # 예약 잠금 문서 생성
+        lock_id = f"{laundry_id}_{start_time.isoformat()}"
+
+        # findAndModify를 사용하여 원자적으로 예약 생성 시도
+        result = db.reservation_locks.find_one_and_update(
+            {
+                "_id": lock_id,
+                "reserved": {"$ne": True}  # 아직 예약되지 않은 경우에만
+            },
+            {
+                "$set": {
+                    "reserved": True,
+                    "user_id": ObjectId(current_user_id),
+                    "timestamp": datetime.now()
+                }
+            },
+            upsert=True,
+            return_document=True
+        )
+
+        # 다른 사용자가 이미 예약한 경우
+        if result.get("user_id") != ObjectId(current_user_id):
+            return render_template("reserve.html", laundry=laundry, error="이미 예약된 시간입니다.")
+
+        # 시간 충돌 확인
         existing_reservation = db.use.find_one({
             "laundry_id": ObjectId(laundry_id),
             "$or": [
@@ -99,12 +180,14 @@ def reserve(laundry_id):
         })
 
         if existing_reservation:
+            # 잠금 해제
+            db.reservation_locks.delete_one({"_id": lock_id})
             return render_template("reserve.html", laundry=laundry, error="이미 예약된 시간입니다.")
 
         # 새 예약 생성
         new_reservation = {
             "laundry_id": ObjectId(laundry_id),
-            "user_id": ObjectId(session["user_id"]),
+            "user_id": ObjectId(current_user_id),
             "status": "reserved",
             "start_time": start_time,
             "end_time": end_time,
@@ -173,14 +256,16 @@ def get_available_times(laundry_id):
 
 
 @app.route("/my_reservations")
-@login_required
+@jwt_required()
 def my_reservations():
+    current_user_id = get_jwt_identity()
+
     # 현재 시간
     now = datetime.now()
     custom_date = datetime(2025, 5, 14, 15, 5, 0)
 
     # 현재 로그인한 사용자의 예약 목록 가져오기
-    reservations = list(db.use.find({"user_id": ObjectId(session["user_id"])}).sort("start_time", 1))
+    reservations = list(db.use.find({"user_id": ObjectId(current_user_id)}).sort("start_time", 1))
 
     # 세탁기 정보 추가
     for reservation in reservations:
@@ -199,39 +284,127 @@ def my_reservations():
 
 
 @app.route("/cancel_reservation/<reservation_id>")
-@login_required
+@jwt_required()
 def cancel_reservation(reservation_id):
+    current_user_id = get_jwt_identity()
+
     # 예약 삭제
     db.use.delete_one({
         "_id": ObjectId(reservation_id),
-        "user_id": ObjectId(session["user_id"])
+        "user_id": ObjectId(current_user_id)
     })
 
     return redirect(url_for("my_reservations"))
 
 
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+        phone = request.form.get("phone")
+
+        # 이메일 중복 확인
+        existing_user = db.user.find_one({"email": email})
+        if existing_user:
+            return render_template("register.html", error="이미 등록된 이메일입니다.")
+
+        # 비밀번호 해싱 (bcrypt 사용)
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+        # 새 사용자 등록
+        new_user = {
+            "email": email,
+            "pw": hashed_password,
+            "phone": phone,
+            "created_at": datetime.now()
+        }
+
+        user_id = db.user.insert_one(new_user).inserted_id
+
+        # JWT 토큰 생성
+        access_token = create_access_token(identity=str(user_id))
+        refresh_token = create_refresh_token(identity=str(user_id))
+
+        # Redis에 리프레시 토큰 저장
+        save_refresh_token(
+            str(user_id),
+            refresh_token,
+            int(os.getenv("REFRESH_TOKEN_EXPIRES", 1209600))
+        )
+
+        response = make_response(redirect(url_for("index")))
+
+        # 쿠키에 토큰 설정
+        response.set_cookie(
+            'access_token_cookie',
+            access_token,
+            max_age=int(os.getenv("ACCESS_TOKEN_EXPIRES", 1800)),
+            httponly=True
+        )
+        response.set_cookie(
+            'refresh_token_cookie',
+            refresh_token,
+            max_age=int(os.getenv("REFRESH_TOKEN_EXPIRES", 1209600)),
+            httponly=True
+        )
+
+        return response
+
+    return render_template("register.html")
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method == 'POST':
-        # 폼 데이터에서 이메일과 비밀번호 가져오기
-        email = request.form['email']
-        password = request.form['password']
-        
-        # 이메일 확인
-        user = db.user.find_one({'email': email})
-        
-        if not user:
-            session['message'] = "이메일 또는 비밀번호가 올바르지 않습니다."  # 오류 메시지 세션에 저장
-            session['message_type'] = 'error'  # 메시지 유형 저장
-            return redirect(url_for('login'))  # 로그인 페이지로 리디렉션
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
 
-        # 비밀번호 검증
-        if check_password_hash(user['password'], password): # password or pw
-            # 세션에 사용자 정보 저장 (로그인 처리)
-            session['user_id'] = str(user['_id'])  # 사용자 ID를 세션에 저장
-            session['message'] = "로그인 성공!"  # 성공 메시지 세션에 저장
-            session['message_type'] = 'success'  # 메시지 유형 저장
-            return redirect(url_for('index'))  # 로그인 후 인덱스 페이지로 리디렉션
+        user = db.user.find_one({"email": email})
+
+        # 사용자가 존재하는지 확인
+        if not user:
+            return render_template("login.html", error="이메일 또는 비밀번호가 올바르지 않습니다.")
+
+        try:
+            if isinstance(user['pw'], bytes):
+                login_success = bcrypt.checkpw(password.encode('utf-8'), user['pw'])
+            # 평문인 경우
+            else:
+                login_success = (user['pw'] == password)
+        except:
+            login_success = False
+
+
+        if login_success:
+            # JWT 토큰 생성
+            access_token = create_access_token(identity=str(user["_id"]))
+            refresh_token = create_refresh_token(identity=str(user["_id"]))
+
+            # Redis에 리프레시 토큰 저장
+            save_refresh_token(
+                str(user["_id"]),
+                refresh_token,
+                int(os.getenv("REFRESH_TOKEN_EXPIRES", 1209600))
+            )
+
+            response = make_response(redirect(url_for("index")))
+
+            # 쿠키에 토큰 설정 (HttpOnly)
+            response.set_cookie(
+                'access_token_cookie',
+                access_token,
+                max_age=int(os.getenv("ACCESS_TOKEN_EXPIRES", 1800)),
+                httponly=True
+            )
+            response.set_cookie(
+                'refresh_token_cookie',
+                refresh_token,
+                max_age=int(os.getenv("REFRESH_TOKEN_EXPIRES", 1209600)),
+                httponly=True
+            )
+
+            return response
         else:
             session['message'] = "이메일 또는 비밀번호가 올바르지 않습니다."  # 오류 메시지 세션에 저장
             session['message_type'] = 'error'  # 메시지 유형 저장
@@ -283,21 +456,65 @@ def register():
 
     return render_template('register.html')
 
+# 토큰 갱신 엔드포인트
+@app.route("/api/refresh", methods=["POST"])
+@jwt_required(refresh=True)
+def refresh():
+    current_user_id = get_jwt_identity()
+
+    # Redis에서 저장된 리프레시 토큰 확인
+    stored_token = get_refresh_token(current_user_id)
+
+    # 요청의 리프레시 토큰
+    refresh_token = request.cookies.get('refresh_token_cookie')
+
+    # 토큰 불일치 시 거부 (토큰 재사용 시도)
+    if stored_token != refresh_token:
+        return jsonify({"msg": "유효하지 않은 리프레시 토큰입니다."}), 401
+
+    # 새로운 액세스 토큰 생성
+    access_token = create_access_token(identity=current_user_id)
+
+    response = jsonify({"access_token": access_token})
+    response.set_cookie(
+        'access_token_cookie',
+        access_token,
+        max_age=int(os.getenv("ACCESS_TOKEN_EXPIRES", 1800)),
+        httponly=True
+    )
+
+    return response
+
+
 @app.route("/logout")
+@jwt_required(optional=True)
 def logout():
-    session.pop("user_id", None)
-    session.pop("user", None)
-    session['message'] = "로그아웃되었습니다."
-    session['message_type'] = "success"
-    return redirect(url_for("login"))
-# -------------------------------
-# JWT 인증 테스트용 보호된 라우트
-# -------------------------------
-@app.route('/api/protected')
-@jwt_required()
-def protected():
-    current_user = get_jwt_identity()
-    return f'{current_user}님 안녕하세요!'
+    current_user_id = get_jwt_identity()
+
+    # 사용자가 로그인된 상태면 토큰 삭제
+    if current_user_id:
+        delete_refresh_token(current_user_id)
+
+    response = make_response(redirect(url_for("login")))
+
+    # 쿠키 삭제
+    response.delete_cookie('access_token_cookie')
+    response.delete_cookie('refresh_token_cookie')
+
+    return response
+
+
+@app.context_processor
+def inject_user():
+    try:
+        verify_jwt_in_request(optional=True)
+        current_user_id = get_jwt_identity()
+        if current_user_id:
+            return {'is_logged_in': True}
+    except:
+        pass
+    return {'is_logged_in': False}
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5001, debug=True)

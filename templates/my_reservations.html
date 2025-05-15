@@ -43,7 +43,7 @@
                     <br>
                     남은 시간 {{ ((reservation.end_time - now).total_seconds() / 60)|int }} 분
                     {% elif reservation.start_time > now %}
-                    예약 대기 중
+                    예약 완료
                     {% else %}
                     이용 완료
                     {% endif %}

@@ -1,23 +1,39 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1 class="text-2xl font-bold mb-6">세탁기/건조기 현황</h1>
+<!--<h2 class="text-2xl font-bold mb-6">세탁기/건조기를 예약해보세요!</h2>-->
+
+<!-- 상태 범례 -->
+<div class="flex flex-wrap items-center gap-6 mb-6 px-4 py-3 bg-white rounded-lg shadow-sm">
+    <div class="flex items-center">
+        <div class="w-4 h-4 bg-green-500 rounded mr-2"></div>
+        <span class="text-sm">사용 가능한 세탁기</span>
+    </div>
+    <div class="flex items-center">
+        <div class="w-4 h-4 bg-blue-500 rounded mr-2"></div>
+        <span class="text-sm">사용 가능한 건조기</span>
+    </div>
+    <div class="flex items-center">
+        <div class="w-4 h-4 bg-red-500 rounded mr-2"></div>
+        <span class="text-sm">사용 중</span>
+    </div>
+</div>
 
 <!-- 세탁기 섹션 -->
 <h2 class="text-xl font-semibold mb-4">세탁기</h2>
-<div class="grid grid-cols-7 gap-4 mb-8">
+<div class="grid grid-cols-7 gap-2 sm:gap-4 mb-8">
     {% for laundry in laundries %}
     {% if laundry.type == 'washer' %}
-    <div class="relative">
+    <div class="aspect-square"> <!-- 정사각형 비율 유지 -->
         <a href="{{ url_for('reserve', laundry_id=laundry._id) }}"
-           class="block p-6 rounded-lg shadow-md text-center font-bold text-white
+           class="flex flex-col items-center justify-center h-full rounded-lg shadow-md text-white text-center
                   {% if laundry.status == 0 %}
                   bg-green-500 hover:bg-green-600
                   {% else %}
                   bg-red-500 hover:bg-red-600
                   {% endif %}">
-            세탁기 {{ laundry.id }}
-            <div class="mt-2 text-sm">
+            <span class="text-sm sm:text-base md:text-lg lg:text-xl font-bold">{{ laundry.id }}</span>
+            <div class="text-[8px] sm:text-xs md:text-sm mt-1 hidden sm:block"> <!-- 모바일에서는 숨김 -->
                 {% if laundry.status == 0 %}
                 사용 가능
                 {% else %}
@@ -32,19 +48,19 @@
 
 <!-- 건조기 섹션 -->
 <h2 class="text-xl font-semibold mb-4">건조기</h2>
-<div class="grid grid-cols-7 gap-4 mb-8">
+<div class="grid grid-cols-7 gap-2 sm:gap-4 mb-8">
     {% for laundry in laundries %}
     {% if laundry.type == 'dryer' %}
-    <div class="relative">
+    <div class="aspect-square"> <!-- 정사각형 비율 유지 -->
         <a href="{{ url_for('reserve', laundry_id=laundry._id) }}"
-           class="block p-6 rounded-lg shadow-md text-center font-bold text-white
+           class="flex flex-col items-center justify-center h-full rounded-lg shadow-md text-white text-center
                   {% if laundry.status == 0 %}
                   bg-blue-500 hover:bg-blue-600
                   {% else %}
                   bg-red-500 hover:bg-red-600
                   {% endif %}">
-            건조기 {{ laundry.id }}
-            <div class="mt-2 text-sm">
+            <span class="text-sm sm:text-base md:text-lg lg:text-xl font-bold">{{ laundry.id }}</span>
+            <div class="text-[8px] sm:text-xs md:text-sm mt-1 hidden sm:block"> <!-- 모바일에서는 숨김 -->
                 {% if laundry.status == 0 %}
                 사용 가능
                 {% else %}
@@ -68,4 +84,58 @@
         <li>예약 취소는 '내 예약' 메뉴에서 가능합니다.</li>
     </ul>
 </div>
+
+<script>
+// 액세스 토큰 만료 시 처리
+async function refreshToken() {
+  try {
+    const response = await fetch('/api/refresh', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      // 리프레시 토큰까지 만료되었다면 로그인 페이지로
+      window.location.href = '/login';
+      return false;
+    }
+
+    const data = await response.json();
+    return true;
+  } catch (error) {
+    console.error('토큰 갱신 오류:', error);
+    return false;
+  }
+}
+
+// API 요청 래퍼 함수 (액세스 토큰 만료 자동 처리)
+async function fetchWithToken(url, options = {}) {
+  // 첫 요청 시도
+  let response = await fetch(url, {
+    ...options,
+    credentials: 'same-origin',
+  });
+
+  // 401 Unauthorized - 액세스 토큰 만료
+  if (response.status === 401) {
+    const refreshSuccess = await refreshToken();
+    if (!refreshSuccess) {
+      throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+    }
+
+    // 새 토큰으로 다시 요청
+    response = await fetch(url, {
+      ...options,
+      credentials: 'same-origin',
+    });
+  }
+
+  return response;
+}
+</script>
+
+
 {% endblock %}
