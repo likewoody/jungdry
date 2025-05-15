@@ -55,15 +55,18 @@ def jwt_login_required(f):
     return decorated_function
 
 
-# # 현재 사용자가 로그인되어 있는지 확인하는 데코레이터
-# def login_required(f):
-#     def decorated_function(*args, **kwargs):
-#         if "user_id" not in session:
-#             return redirect(url_for("login"))
-#         return f(*args, **kwargs)
-#
-#     decorated_function.__name__ = f.__name__
-#     return decorated_function
+# 하나의 통합된 방식으로 인증 처리
+@app.before_request
+def authenticate():
+    # 공개 라우트는 제외
+    if request.endpoint in ['login', 'register', 'static']:
+        return
+
+    # JWT 토큰 검증
+    try:
+        verify_jwt_in_request()
+    except:
+        return redirect(url_for('login'))
 
 
 @app.route("/")
