@@ -80,6 +80,12 @@ docker-compose up --build
 ```
 
 ### 🚀 배포 (EC2 + Nginx)
+http://54.180.95.109/
+
+test 계정:
+i : 1~20
+email: user{i}@example.com
+pass: password123
 
 </br>
 
