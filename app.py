@@ -1,7 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, make_response
 from pymongo import MongoClient
 from datetime import datetime, timedelta
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
+import re
 import os
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager, create_access_token, create_refresh_token, jwt_required, get_jwt_identity, verify_jwt_in_request
@@ -33,10 +36,14 @@ jwt = JWTManager(app)
 
 # MongoDB 연결 - 도커 컴포즈 환경에 맞게 수정
 # docker-compose.yml에서 설정한 MONGO_URI 환경 변수 사용
-mongo_uri = os.getenv("MONGO_URI", "mongodb://mongo:27017/")
+mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 client = MongoClient(mongo_uri)
 db = client["jungdry"]
 
+# JWT 설정
+app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # 비밀키 (안전하게 관리해야 함)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # 토큰 만료 시간 1시간
+jwt = JWTManager(app)
 
 # JWT가 필요한 엔드포인트용 데코레이터
 def jwt_login_required(f):
@@ -255,6 +262,7 @@ def my_reservations():
 
     # 현재 시간
     now = datetime.now()
+    custom_date = datetime(2025, 5, 14, 15, 5, 0)
 
     # 현재 로그인한 사용자의 예약 목록 가져오기
     reservations = list(db.use.find({"user_id": ObjectId(current_user_id)}).sort("start_time", 1))
@@ -262,9 +270,17 @@ def my_reservations():
     # 세탁기 정보 추가
     for reservation in reservations:
         laundry = db.laundry.find_one({"_id": reservation["laundry_id"]})
+        if reservation.get('start_time') <= now and reservation.get('end_time') >= now:
+            db.use.update_one({'laundry_id':laundry['_id']},{'$set':{'status':"using"}})
+        elif reservation.get('end_time') <= now:
+            db.use.update_one({'laundry_id':laundry['_id']},{'$set':{'status':"finished"}})
         reservation["laundry_info"] = laundry
 
-    return render_template("my_reservations.html", reservations=reservations, now=now)
+    # 상태별 정렬 우선순위 정의
+    reservations.sort(key=lambda x: x.get('status'), reverse=True)
+
+    return render_template("my_reservations.html", reservations=reservations, now=custom_date)
+
 
 
 @app.route("/cancel_reservation/<reservation_id>")
@@ -390,10 +406,55 @@ def login():
 
             return response
         else:
-            return render_template("login.html", error="이메일 또는 비밀번호가 올바르지 않습니다.")
+            session['message'] = "이메일 또는 비밀번호가 올바르지 않습니다."  # 오류 메시지 세션에 저장
+            session['message_type'] = 'error'  # 메시지 유형 저장
+            return redirect(url_for('login'))  # 로그인 페이지로 리디렉션
 
-    return render_template("login.html")
+    # GET 요청 시 로그인 페이지 렌더링
+    return render_template('login.html')
 
+# -------------------------------
+# 회원가입 페이지 렌더링
+# -------------------------------
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        phone = request.form.get('phone_Number')
+        
+        print(f'test{email}')
+        print(f'test{password}')
+        print(f'test{phone}')
+
+        # 필수 입력값 검증
+        if not email or not password or not phone:
+            session['message'] = '모든 필드를 입력해주세요.'
+            session['message_type'] = 'error'
+            return redirect(url_for('register'))
+        
+        # 이메일 중복 체크
+        if db.user.find_one({'email': email}):
+            session['message'] = '이미 등록된 이메일입니다.'
+            session['message_type'] = 'error'
+            return redirect(url_for('register'))
+
+        # 비밀번호 해싱
+        hashed_pw = generate_password_hash(password)
+
+        # 사용자 저장
+        db.user.insert_one({
+            'email': email,
+            'password': hashed_pw,
+            'phone_number': phone,
+            'created_at': datetime.now()
+        })
+
+        session['message'] = '회원가입이 완료되었습니다. 로그인해주세요.'
+        session['message_type'] = 'success'
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
 
 # 토큰 갱신 엔드포인트
 @app.route("/api/refresh", methods=["POST"])

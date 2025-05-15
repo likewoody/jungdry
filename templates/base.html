@@ -26,6 +26,44 @@
     </style>
     <!-- PWA 관련 스크립트 -->
     <script>
+        function handleDomainSelect(select) {
+        const domainInput = document.getElementById('domainInput');
+        if (select.value === 'custom') {
+            domainInput.readOnly = false;
+            domainInput.value = '';
+            domainInput.focus();
+        } else {
+            domainInput.readOnly = true;
+            domainInput.value = select.value;
+        }
+        }
+
+        function validateForm() {
+        const username = document.querySelector('input[name="username"]');
+        const password = document.querySelector('input[name="password"]');
+
+        let valid = true;
+
+        if (!username.value.trim()) {
+            username.setCustomValidity('이메일 아이디를 입력해주세요.');
+            username.reportValidity();
+            valid = false;
+        } else {
+            username.setCustomValidity('');
+        }
+
+        if (!password.value.trim()) {
+            password.setCustomValidity('비밀번호를 입력해주세요.');
+            password.reportValidity();
+            valid = false;
+        } else {
+            password.setCustomValidity('');
+        }
+
+        return valid;
+        }
+    </script>
+    <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/service-worker.js')

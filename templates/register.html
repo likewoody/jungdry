@@ -10,6 +10,7 @@
     </div>
     {% endif %}
 
+
     <form action="{{ url_for('register') }}" method="POST">
         <!-- CSRF 토큰 추가 -->
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>

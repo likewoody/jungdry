@@ -40,6 +40,8 @@
                 <p class="mt-2 {% if reservation.start_time <= now and reservation.end_time >= now %}text-green-600 font-bold{% else %}text-gray-500{% endif %}">
                     {% if reservation.start_time <= now and reservation.end_time >= now %}
                     현재 이용 가능
+                    <br>
+                    남은 시간 {{ ((reservation.end_time - now).total_seconds() / 60)|int }} 분
                     {% elif reservation.start_time > now %}
                     예약 완료
                     {% else %}
